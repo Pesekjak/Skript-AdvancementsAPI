@@ -1,0 +1,268 @@
+#    ________  __   ___       __            __         _______   __     
+#   /"       )|/"| /  ")     /""\          /""\       |   __ "\ |" \    
+#  (:   \___/ (: |/   /     /    \        /    \      (. |__) :)||  |   
+#   \___  \   |    __/     /' /\  \      /' /\  \     |:  ____/ |:  |   
+#    __/  \\  (// _  \    //  __'  \    //  __'  \    (|  /     |.  |   
+#   /" \   :) |: | \  \  /   /  \\  \  /   /  \\  \  /|__/ \    /\  |\  
+#  (_______/  (__|  \__)(___/    \___)(___/    \___)(_______)  (__\_|_)
+#                                 
+#                      𝐒𝐤𝐫𝐢𝐩𝐭𝐀𝐏𝐈 𝐟𝐨𝐫 𝐀𝐝𝐯𝐚𝐧𝐜𝐞𝐦𝐞𝐧𝐭𝐬.
+#
+#   ______________________________________________________________
+#
+#  Requirements: Skript, skript-reflect, ThatPacketAddon, CrazyAdvancements
+#
+#  Tested on Paper 1.16.5
+#  Only version 1.16 is supported, this isn't original API, it's just for porting
+#  CrazyAdvancementsAPI into Skript syntaxes for easier use.
+#
+#  If you run into problems, feel free to message me on discord: pesekjan#5182
+#
+#  Ｃｒｅｄｉｔｓ (っ◔◡◔)っ ♥
+#    Big credit to ZockerAxel for obviously making this amazing API (https://www.spigotmc.org/resources/crazy-advancements-api.51741/)
+
+options:
+	check-for-updates: true
+
+
+#        ⚠ Do not change the code below or I will not ⚠
+#            ⚠ be able to help you with problems ⚠
+#   ______________________________________________________________
+
+	version: 1.0-BETA.1
+
+import:
+	org.bukkit.Bukkit
+	
+	java.io.BufferedReader
+	java.io.InputStreamReader
+	java.net.URL
+	
+	ch.njol.skript.Skript
+	
+	eu.endercentral.crazy_advancements.Advancement as Advancement
+	eu.endercentral.crazy_advancements.AdvancementDisplay as AdvancementDisplay
+	eu.endercentral.crazy_advancements.AdvancementPacketReceiver as AdvancementPacketReceiver
+	eu.endercentral.crazy_advancements.AdvancementReward as AdvancementReward
+	eu.endercentral.crazy_advancements.AdvancementVisibility as AdvancementVisibility
+	eu.endercentral.crazy_advancements.CrazyAdvancements as CrazyAdvancements
+	eu.endercentral.crazy_advancements.JSONMessage as JSONMessage
+	eu.endercentral.crazy_advancements.NameKey as NameKey
+	eu.endercentral.crazy_advancements.AdvancementDisplay$AdvancementFrame as AdvancementFrame
+	eu.endercentral.crazy_advancements.manager.AdvancementManager as AdvancementManager
+
+on load:
+	set {_skript-reflect.ver} to "2.1.1"
+	set {_ThatPacketAddon.ver} to "1.0-BETA.3"
+	set {_CrazyAdvancementsAPI.ver} to "1.14.1"
+	loop "skript-reflect", "ThatPacketAddon", "CrazyAdvancementsAPI":
+		if server.getServer().getPluginManager().getPlugin(loop-value) is not set:
+			Skript.error("&c&lSKAAPI: &cYou missing addon: %loop-value%")
+		else:
+			(server.getServer().getPluginManager().getPlugin(loop-value).getDescription().getVersion()) is not {_%loop-value%.ver}
+			Skript.warning("&6&lSKAAPI: &6Detected %loop-value% %(server.getServer().getPluginManager().getPlugin(loop-value).getDescription().getVersion())%, recommended %loop-value% version is %{_%loop-value%.ver}%")
+	if {@check-for-updates} = true:
+		set {_br} to new BufferedReader(new InputStreamReader(new URL("https://raw.githubusercontent.com/Pesekjak/Skript-AdvancementsAPI/main/version.txt").openStream()))
+		set {_LastVer} to first element of ...{_br}.lines()
+		{_br}.close()
+		if "%{_LastVer}%" != "{@version}":
+			Skript.warning("&6&lAdvancementAPI: &6Detected version {@version}&6, the newest version is %{_LastVer}%")
+
+on quit:
+	delete (metadata tag "advmanager" of player)
+
+
+#   ______________________________________________________________
+
+
+#                                    _                 
+#                                   (_)                
+#   _____  ___ __  _ __ ___  ___ ___ _  ___  _ __  ___ 
+#  / _ \ \/ / '_ \| '__/ _ \/ __/ __| |/ _ \| '_ \/ __|
+# |  __/>  <| |_) | | |  __/\__ \__ \ | (_) | | | \__ \
+#  \___/_/\_\ .__/|_|  \___||___/___/_|\___/|_| |_|___/
+#           | |                                        
+#           |_|
+
+
+# Name: Player's advancement manager - Returns advancement manager of player
+# Example: advancement manager of player
+expression adv[ancement[s]] manager of %player%:
+	return type: object
+	get:
+		return (metadata tag "advmanager" of expr-1)
+
+
+# Name: Advancement - Returns advancement
+# Example: advancement with root "blub" id "yeet" from manager (advancement manager of player)
+expression adv[ancement] [with] root %string% [and] [with] id %string% from manager %object%:
+	return type: object
+	get:
+		return expr-3.getAdvancement(new NameKey(expr-1, expr-2))
+		
+
+#   ______________________________________________________________
+
+#        __  __          _       
+#       / _|/ _|        | |      
+#   ___| |_| |_ ___  ___| |_ ___ 
+#  / _ \  _|  _/ _ \/ __| __/ __|
+# |  __/ | | ||  __/ (__| |_\__ \
+#  \___|_| |_| \___|\___|\__|___/
+
+
+# Name: Create manager - Creates advancement manager, it's needed for further manipulation with player's advancements, after join you need to wait at least 3 ticks
+# Example: create advancement manager for player
+effect create adv[ancement[s]] manager for %player%:
+	trigger:
+		set (metadata tag "advmanager" of expr-1) to new AdvancementManager(expr-1)
+
+
+# Name: Create root advancement - Creates root advancement, which is first advancement of new tab, available frames are TASK, GOAL and CHALLENGE, available visibilities are VANILLA, NEVER, ALWAYS, for bg texture use any texture path in avaible resourcepack
+# Example: store new root advancement with icon stone name "Test" description "Amazing" frametype "TASK" toast false chat false visibility "ALWAYS" with bg "textures/block/yellow_concrete.png" root "custom" id "yeet" in {_root}
+effect store new root adv[ancement] with icon %item% name %string% description %string% frametype %string% toast %boolean% chat %boolean% visibility %string% with bg %string% root %string% id %string% in %object%:
+	trigger:
+		if expr-4 is "CHALLENGE":
+			set {_frame} to AdvancementFrame.CHALLENGE
+		else if expr-4 is "GOAL":
+			set {_frame} to AdvancementFrame.GOAL
+		else:
+			set {_frame} to AdvancementFrame.TASK
+		if expr-7 is "VANILLA":
+			set {_visibility} to AdvancementVisibility.VANILLA
+		else if expr-7 is "NEVER":
+			set {_visibility} to AdvancementVisibility.NEVER
+		else:
+			set {_visibility} to AdvancementVisibility.ALWAYS
+		set {_rootDisplay} to new AdvancementDisplay((random item of expr-1), expr-2, expr-3, {_frame}, expr-5, expr-6, {_visibility})
+		{_rootDisplay}.setBackgroundTexture(expr-8)
+		set raw expr-11 to new Advancement(null, new NameKey(expr-9, expr-10), {_rootDisplay})
+
+
+# Name: Create children advancement - Creates children advancement
+# Example: store new children advancement with icon diamond name "Yay" description "Cool text" frametype "GOAL" toast false chat false visibility "ALWAYS" x 1 y 1 depends {_root} root "custom" id "lel" in {_child}
+effect store new children adv[ancement] with icon %item% name %string% description %string% frametype %string% toast %boolean% chat %boolean% visibility %string% x %number% y %number% depends %object% root %string% id %string% in %object%:
+	trigger:
+		if expr-4 is "CHALLENGE":
+			set {_frame} to AdvancementFrame.CHALLENGE
+		else if expr-4 is "GOAL":
+			set {_frame} to AdvancementFrame.GOAL
+		else:
+			set {_frame} to AdvancementFrame.TASK
+		if expr-7 is "VANILLA":
+			set {_visibility} to AdvancementVisibility.VANILLA
+		else if expr-7 is "NEVER":
+			set {_visibility} to AdvancementVisibility.NEVER
+		else:
+			set {_visibility} to AdvancementVisibility.ALWAYS
+		set {_childrenDisplay} to new AdvancementDisplay((random item of expr-1), expr-2, expr-3, {_frame}, expr-5, expr-6, {_visibility})
+		{_childrenDisplay}.setCoordinates(expr-8 and expr-9)
+		set raw expr-13 to new Advancement(expr-10, new NameKey(expr-11, expr-12), {_childrenDisplay})
+
+
+# Name: Add advancements to manager - Add advancements to the manager of the player
+# Example: tack advancements ({_root}, {_child}) to manager (advancement manager of player)
+effect tack advancements %objects% to manager %object%:
+	trigger:
+		expr-2.addAdvancement(exprs-1)
+
+
+# Name: Remove advancement from manager - Removes advancement from the manager of the player
+# Example: rem advancement {_root} from manager (advancement manager of player)
+effect rem advancement %object% from manager %object%:
+	trigger:
+		expr-2.removeAdvancement(expr-1)
+
+
+# Name: Setup max criteria - Set max criteria of advancement
+# Example: setup max criteria of advancement {_adv} to 5
+effect setup max criteria of advancement %object% to %number%:
+	trigger:
+		expr-1.setCriteria(expr-2)
+
+
+# Name: Update criteria - Updates criteria of advancement for player
+# Example: update criteria of advancement {_adv} to 1 for player
+effect update criteria of advancement %object% to %number% for %player%:
+	trigger:
+		(advancement manager of expr-3).setCriteriaProgress(expr-3, expr-1, expr-2)
+
+
+# Name: Grant advancement - Grant advancement for player
+# Example: grant advancement {_adv} for player
+effect grant advancement %object% for %player%:
+	trigger:
+		(advancement manager of expr-2).grantAdvancement(expr-2, expr-1)
+
+
+# Name: Revoke advancement - Revoke advancement for player
+# Example: revoke advancement {_adv} for player
+effect revoke advancement %object% for %player%:
+	trigger:
+		(advancement manager of expr-2).revokeAdvancement(expr-2, expr-1)
+
+
+# Name: Toast advancement - Displays toast advancement for player
+# Example: toast advancement {_adv} for player
+effect toast advancement %object% for %player%:
+	trigger:
+		expr-1.displayToast(expr-2)
+
+
+# Name: Set advancement screen - Changes active advancement screen of player
+# Example: change advancement screen of player to root "yeet" id "lel"
+effect change advancement screen of %player% to root %string% id %string%:
+	trigger:
+		CrazyAdvancements.setActiveTab(expr-1, new NameKey(expr-2, expr-3))
+
+
+#   ______________________________________________________________
+
+
+#                       _
+#                      | |      
+#   _____   _____ _ __ | |_ ___ 
+#  / _ \ \ / / _ \ '_ \| __/ __|
+# |  __/\ V /  __/ | | | |_\__ \
+#  \___| \_/ \___|_| |_|\__|___/
+
+
+# Name: On advancement root update - Called when advancement packet is played
+# Event values: player
+# Example: on advancement root update: cancel event
+event "advRootCreate":
+    patterns: 
+        advancement root update
+    event-values: player
+on packet event play_server_advancements:
+	set {_values::player} to player
+	set {_event} to custom event "advRootCreate" with {_values::*}
+	call {_event}
+	{_event} is cancelled
+	cancel event
+
+
+# Name: Select tab - Called when player selects tab
+# Event values: player, action, identifier
+# Example: on achievement tab select: broadcast "%player% - %action% - %identifier%"
+event "achievementTabSelect":
+	patterns: 
+		achievement tab select
+	event-values: player
+expression action:
+	return type: boolean
+	usable in:
+		custom event "achievementTabSelect"
+	get:
+		return event.getData("action")
+expression identifier:
+	return type: string
+	usable in:
+		custom event "achievementTabSelect"
+	get:
+		return event.getData("id")
+on packet event play_client_advancements:
+	set {_values::player} to player
+	set {_data::action} to (object field 0 of event-packet)
+	set {_data::id} to (object field 1 of event-packet)
+	call custom event "achievementTabSelect" with {_values::*} and data {_data::*}
